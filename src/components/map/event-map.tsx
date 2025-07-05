@@ -1,13 +1,13 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
+import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Calendar, MapPin, Users, Clock } from "lucide-react"
 import { EventSignupForm } from "./event-signup-form"
-import { google } from "google-maps"
 
 interface Event {
   id: string
@@ -27,60 +27,47 @@ interface EventMapProps {
   events: Event[]
 }
 
+const containerStyle = {
+  width: "100%",
+  height: "100vh",
+  minHeight: "400px",
+}
+
+const defaultCenter = { lat: 40.7128, lng: -74.006 } // NYC
+
 export function EventMap({ events }: EventMapProps) {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
   const [showSignupForm, setShowSignupForm] = useState(false)
-  const [mapLoaded, setMapLoaded] = useState(false)
 
-  useEffect(() => {
-    // Load Google Maps API
-    const script = document.createElement("script")
-    script.src = `https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&libraries=places`
-    script.async = true
-    script.defer = true
-    script.onload = () => setMapLoaded(true)
-    document.head.appendChild(script)
-
-    return () => {
-      document.head.removeChild(script)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (mapLoaded && events.length > 0) {
-      initializeMap()
-    }
-  }, [mapLoaded, events])
-
-  const initializeMap = () => {
-    const map = new google.maps.Map(document.getElementById("map") as HTMLElement, {
-      zoom: 10,
-      center: { lat: 40.7128, lng: -74.006 }, // Default to NYC
-    })
-
-    events.forEach((event) => {
-      const marker = new google.maps.Marker({
-        position: { lat: event.latitude, lng: event.longitude },
-        map: map,
-        title: event.title,
-      })
-
-      marker.addListener("click", () => {
-        setSelectedEvent(event)
-      })
-    })
-  }
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
 
   return (
     <div className="relative h-full">
       {/* Map Container */}
-      <div id="map" className="w-full h-full">
-        {!mapLoaded && (
+      <div className="w-full" style={{ height: "100vh", minHeight: 400 }}>
+        {apiKey ? (
+          <LoadScript googleMapsApiKey={apiKey} libraries={["places"]}>
+            <GoogleMap
+              mapContainerStyle={containerStyle}
+              center={events.length > 0 ? { lat: events[0].latitude, lng: events[0].longitude } : defaultCenter}
+              zoom={10}
+            >
+              {events.map((event) => (
+                <Marker
+                  key={event.id}
+                  position={{ lat: event.latitude, lng: event.longitude }}
+                  title={event.title}
+                  onClick={() => setSelectedEvent(event)}
+                />
+              ))}
+            </GoogleMap>
+          </LoadScript>
+        ) : (
           <div className="flex items-center justify-center h-full bg-gray-100">
             <div className="text-center">
               <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-600 mx-auto"></div>
               <p className="mt-4 text-gray-600">Loading map...</p>
-              <p className="text-sm text-gray-500 mt-2">Note: This demo uses a placeholder for Google Maps API</p>
+              <p className="text-sm text-gray-500 mt-2">Google Maps API key missing</p>
             </div>
           </div>
         )}
