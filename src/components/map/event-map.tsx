@@ -19,7 +19,7 @@ interface Event {
   volunteers_needed: number
   latitude: number
   longitude: number
-  profiles: {
+  host_id: {
     full_name: string
   }
 }
@@ -42,8 +42,12 @@ const mapOptions = {
   fullscreenControl: true,
 }
 
-export function EventMap() {
-  const [events, setEvents] = useState<Event[]>([])
+interface EventMapProps {
+  initialEvents: Event[]
+}
+
+export function EventMap({ initialEvents }: EventMapProps) {
+  const [events, setEvents] = useState<Event[]>(initialEvents)
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
   const [showSignupForm, setShowSignupForm] = useState(false)
   const [activeMarker, setActiveMarker] = useState<string | null>(null)
@@ -62,9 +66,8 @@ export function EventMap() {
           volunteers_needed,
           latitude,
           longitude,
-          profiles (
-            full_name
-          )
+          host_id(
+            full_name)
         `)
         .gte('date', new Date().toISOString())
         .order('date', { ascending: true })
@@ -74,7 +77,15 @@ export function EventMap() {
         return
       }
 
-      console.log('Fetched events:', data)
+      if (data) {
+        // Map profiles from array to single object
+        setEvents(
+          data.map((event: any) => ({
+            ...event,
+            profiles: Array.isArray(event.profiles) ? event.profiles[0] : event.profiles,
+          }))
+        )
+      }
     }
 
     fetchEvents()
@@ -145,7 +156,7 @@ export function EventMap() {
       <GoogleMap
         mapContainerStyle={mapContainerStyle}
         center={defaultCenter}
-        zoom={10}
+        zoom={20}
         onLoad={onLoad}
         onUnmount={onUnmount}
         options={mapOptions}
@@ -199,7 +210,7 @@ export function EventMap() {
             >
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm">{event.title}</CardTitle>
-                <CardDescription className="text-xs">By {event.profiles.full_name}</CardDescription>
+                <CardDescription className="text-xs">By {event.host_id.full_name}</CardDescription>
               </CardHeader>
               <CardContent className="pt-0">
                 <div className="flex items-center text-xs text-gray-500 mb-1">
@@ -250,7 +261,7 @@ export function EventMap() {
                 </div>
 
                 <div className="flex items-center justify-between pt-4">
-                  <Badge variant="outline">Hosted by {selectedEvent.profiles.full_name}</Badge>
+                  <Badge variant="outline">Hosted by {selectedEvent.host_id.full_name}</Badge>
                   <Button onClick={() => setShowSignupForm(true)}>Sign Up to Volunteer</Button>
                 </div>
               </div>

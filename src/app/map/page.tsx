@@ -8,17 +8,31 @@ export default async function MapPage() {
   const { data: events } = await supabase
     .from("events")
     .select(`
-      *,
-      profiles (
+      id,
+      title,
+      description,
+      date,
+      location,
+      volunteers_needed,
+      latitude,
+      longitude,
+      host: host_id (
         full_name
       )
     `)
     .gte("date", new Date().toISOString())
     .order("date", { ascending: true })
 
+  // Map the events to match the Event interface
+  const mappedEvents =
+    (events || []).map((event: any) => ({
+      ...event,
+      host_id: Array.isArray(event.host) ? event.host[0] : event.host,
+    })) ?? []
+
   return (
     <div className="h-screen">
-      <EventMap />
+      <EventMap initialEvents={mappedEvents} />
     </div>
   )
 }
