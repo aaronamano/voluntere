@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
-import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api"
+import { useState, useCallback, useEffect } from "react"
+import { GoogleMap, Marker, InfoWindow, useJsApiLoader } from "@react-google-maps/api"
+import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -23,75 +24,178 @@ interface Event {
   }
 }
 
-interface EventMapProps {
-  events: Event[]
-}
-
-const containerStyle = {
+const mapContainerStyle = {
   width: "100%",
-  height: "100vh",
-  minHeight: "400px",
+  height: "100%",
 }
 
-const defaultCenter = { lat: 42.58067066959447, lng: -83.00968221623056 } // church location
+const defaultCenter = {
+  lat: 42.57551758983599,
+  lng: -83.0057278990428,
+}
 
-export function EventMap({ events }: EventMapProps) {
+const mapOptions = {
+  disableDefaultUI: false,
+  zoomControl: true,
+  streetViewControl: false,
+  mapTypeControl: false,
+  fullscreenControl: true,
+}
+
+export function EventMap() {
+  const [events, setEvents] = useState<Event[]>([])
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
   const [showSignupForm, setShowSignupForm] = useState(false)
+  const [activeMarker, setActiveMarker] = useState<string | null>(null)
+  const supabase = createClient()
 
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+  useEffect(() => {
+    async function fetchEvents() {
+      const { data, error } = await supabase
+        .from('events')
+        .select(`
+          id,
+          title,
+          description,
+          date,
+          location,
+          volunteers_needed,
+          latitude,
+          longitude,
+          profiles (
+            full_name
+          )
+        `)
+        .gte('date', new Date().toISOString())
+        .order('date', { ascending: true })
 
-  console.log("Events passed to EventMap:", events)
+      if (error) {
+        console.error('Error fetching events:', error)
+        return
+      }
+
+      console.log('Fetched events:', data)
+    }
+
+    fetchEvents()
+  }, [])
+
+  const { isLoaded, loadError } = useJsApiLoader({
+    id: "google-map-script",
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
+    libraries: ["places"],
+  })
+
+  const onLoad = useCallback(
+    (map: google.maps.Map) => {
+      // Fit map to show all events
+      if (events.length > 0) {
+        const bounds = new google.maps.LatLngBounds()
+        events.forEach((event) => {
+          bounds.extend({ lat: event.latitude, lng: event.longitude })
+        })
+        map.fitBounds(bounds)
+      }
+    },
+    [events],
+  )
+
+  const onUnmount = useCallback(() => {
+    // Clean up if needed
+  }, [])
+
+  const handleMarkerClick = (event: Event) => {
+    setActiveMarker(event.id)
+  }
+
+  const handleInfoWindowClose = () => {
+    setActiveMarker(null)
+  }
+
+  const handleViewDetails = (event: Event) => {
+    setSelectedEvent(event)
+    setActiveMarker(null)
+  }
+
+  if (loadError) {
+    return (
+      <div className="flex items-center justify-center h-full bg-gray-100">
+        <div className="text-center">
+          <p className="text-red-600 font-semibold">Error loading Google Maps</p>
+          <p className="text-sm text-gray-500 mt-2">Please check your API key configuration</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!isLoaded) {
+    return (
+      <div className="flex items-center justify-center h-full bg-gray-100">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading map...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="relative h-full">
-      {/* Map Container */}
-      <div className="w-full" style={{ height: "100vh", minHeight: 400 }}>
-        {apiKey ? (
-          <LoadScript googleMapsApiKey={apiKey} libraries={["places"]}>
-            <GoogleMap
-              mapContainerStyle={containerStyle}
-              center={events.length > 0 ? { lat: events[0].latitude, lng: events[0].longitude } : defaultCenter}
-              zoom={20}
-            >
-              {/* Hardcoded Marker for testing */}
-              <Marker
-                position={{ lat: 42.5752648, lng: -83.00587809999999 }} // church location
-                title="Test Marker"
-              />
-                           
-              {events.map((event) => (
-                <Marker
-                  key={event.id}
-                  position={{ lat: event.latitude, lng: event.longitude }}
-                  title={event.title}
-                  onClick={() => setSelectedEvent(event)}
-                />
-              ))}
-              
-
-            </GoogleMap>
-          </LoadScript>
-        ) : (
-          <div className="flex items-center justify-center h-full bg-gray-100">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-600 mx-auto"></div>
-              <p className="mt-4 text-gray-600">Loading map...</p>
-              <p className="text-sm text-gray-500 mt-2">Google Maps API key missing</p>
-            </div>
-          </div>
-        )}
-      </div>
+      {/* Google Map */}
+      <GoogleMap
+        mapContainerStyle={mapContainerStyle}
+        center={defaultCenter}
+        zoom={10}
+        onLoad={onLoad}
+        onUnmount={onUnmount}
+        options={mapOptions}
+      >
+        {events.map((event) => (
+          <Marker
+            key={event.id}
+            position={{ lat: event.latitude, lng: event.longitude }}
+            onClick={() => handleMarkerClick(event)}
+            title={event.title}
+          >
+            {activeMarker === event.id && (
+              <InfoWindow
+                onCloseClick={handleInfoWindowClose}
+                options={{
+                  pixelOffset: new google.maps.Size(0, -30),
+                }}
+              >
+                <div className="p-2 max-w-xs">
+                  <h3 className="font-semibold text-sm mb-1">{event.title}</h3>
+                  <p className="text-xs text-gray-600 mb-2 line-clamp-2">{event.description}</p>
+                  <div className="space-y-1 mb-3">
+                    <div className="flex items-center text-xs text-gray-500">
+                      <Calendar className="h-3 w-3 mr-1" />
+                      {new Date(event.date).toLocaleDateString()}
+                    </div>
+                    <div className="flex items-center text-xs text-gray-500">
+                      <Users className="h-3 w-3 mr-1" />
+                      {event.volunteers_needed} volunteers needed
+                    </div>
+                  </div>
+                  <Button size="sm" className="w-full text-xs" onClick={() => handleViewDetails(event)}>
+                    View Details
+                  </Button>
+                </div>
+              </InfoWindow>
+            )}
+          </Marker>
+        ))}
+      </GoogleMap>
 
       {/* Event List Sidebar */}
       <div className="absolute top-4 left-4 w-80 max-h-96 overflow-y-auto bg-white rounded-lg shadow-lg p-4">
-        <h3 className="font-bold text-lg mb-4">Upcoming Events</h3>
+        <h3 className="font-bold text-lg mb-4">Upcoming Events ({events.length})</h3>
         <div className="space-y-3">
           {events.map((event) => (
             <Card
               key={event.id}
               className="cursor-pointer hover:shadow-md transition-shadow"
-              onClick={() => setSelectedEvent(event)}
+              onClick={() => handleViewDetails(event)}
             >
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm">{event.title}</CardTitle>
@@ -102,10 +206,13 @@ export function EventMap({ events }: EventMapProps) {
                   <Calendar className="h-3 w-3 mr-1" />
                   {new Date(event.date).toLocaleDateString()}
                 </div>
-                <div className="flex items-center text-xs text-gray-500">
-                  <Users className="h-3 w-3 mr-1" />
-                  {event.volunteers_needed} volunteers needed
+                <div className="flex items-center text-xs text-gray-500 mb-2">
+                  <MapPin className="h-3 w-3 mr-1" />
+                  {event.location}
                 </div>
+                <Badge variant="outline" className="text-xs">
+                  {event.volunteers_needed} volunteers needed
+                </Badge>
               </CardContent>
             </Card>
           ))}

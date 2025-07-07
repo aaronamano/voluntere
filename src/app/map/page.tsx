@@ -18,7 +18,7 @@ export default async function MapPage() {
 
   return (
     <div className="h-screen">
-      <EventMap events={events || []} />
+      <EventMap />
     </div>
   )
 }
