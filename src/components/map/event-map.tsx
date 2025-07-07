@@ -33,13 +33,15 @@ const containerStyle = {
   minHeight: "400px",
 }
 
-const defaultCenter = { lat: 40.7128, lng: -74.006 } // NYC
+const defaultCenter = { lat: 42.58067066959447, lng: -83.00968221623056 } // church location
 
 export function EventMap({ events }: EventMapProps) {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
   const [showSignupForm, setShowSignupForm] = useState(false)
 
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+
+  console.log("Events passed to EventMap:", events)
 
   return (
     <div className="relative h-full">
@@ -50,8 +52,14 @@ export function EventMap({ events }: EventMapProps) {
             <GoogleMap
               mapContainerStyle={containerStyle}
               center={events.length > 0 ? { lat: events[0].latitude, lng: events[0].longitude } : defaultCenter}
-              zoom={10}
+              zoom={20}
             >
+              {/* Hardcoded Marker for testing */}
+              <Marker
+                position={{ lat: 42.5752648, lng: -83.00587809999999 }} // church location
+                title="Test Marker"
+              />
+                           
               {events.map((event) => (
                 <Marker
                   key={event.id}
@@ -60,6 +68,8 @@ export function EventMap({ events }: EventMapProps) {
                   onClick={() => setSelectedEvent(event)}
                 />
               ))}
+              
+
             </GoogleMap>
           </LoadScript>
         ) : (
