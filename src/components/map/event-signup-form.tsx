@@ -18,6 +18,7 @@ export function EventSignupForm({ eventId, onSuccess }: EventSignupFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [userName, setUserName] = useState<string>("")
   const supabase = createClient()
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -37,6 +38,20 @@ export function EventSignupForm({ eventId, onSuccess }: EventSignupFormProps) {
         setError("You must be logged in to sign up for events")
         return
       }
+
+      // Fetch user profile data
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user.id)
+        .single()
+
+      if (profileError) {
+        setError("Error fetching user profile")
+        return
+      }
+
+      setUserName(profile.full_name)
 
       // Check if already registered
       const { data: existingRegistration } = await supabase
@@ -90,6 +105,12 @@ export function EventSignupForm({ eventId, onSuccess }: EventSignupFormProps) {
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
+      )}
+
+      {userName && (
+        <div className="text-sm text-gray-600 mb-4">
+          Signing up as: {userName}
+        </div>
       )}
 
       <div>
