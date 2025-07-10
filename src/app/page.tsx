@@ -11,7 +11,7 @@ export default function HomePage() {
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center space-x-2">
             <Heart className="h-8 w-8 text-indigo-600" />
-            <h1 className="text-2xl font-bold text-gray-900">VolunteerHub</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Voluntere</h1>
           </div>
           <div className="space-x-4">
             <Link href="/login">

@@ -40,6 +40,17 @@ const mapOptions = {
   streetViewControl: false,
   mapTypeControl: false,
   fullscreenControl: true,
+  minZoom: 3, // Prevent zooming out too far
+  maxZoom: 18,
+  restriction: {
+    latLngBounds: {
+      north: 85,
+      south: -85,
+      west: -180,
+      east: 180
+    },
+    strictBounds: true
+  }
 }
 
 interface EventMapProps {
@@ -99,13 +110,18 @@ export function EventMap({ initialEvents }: EventMapProps) {
 
   const onLoad = useCallback(
     (map: google.maps.Map) => {
-      // Fit map to show all events
       if (events.length > 0) {
         const bounds = new google.maps.LatLngBounds()
         events.forEach((event) => {
           bounds.extend({ lat: event.latitude, lng: event.longitude })
         })
         map.fitBounds(bounds)
+        
+        // Add minimum zoom check after fitting bounds
+        const listener = map.addListener('idle', () => {
+          if (map.getZoom()! > 18) map.setZoom(18)
+          google.maps.event.removeListener(listener)
+        })
       }
     },
     [events],
