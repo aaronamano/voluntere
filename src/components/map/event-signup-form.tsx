@@ -7,14 +7,26 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
 import { createClient } from "@/lib/supabase/client"
+
+interface Slot {
+  id: string
+  event_id: string
+  date: string
+  start_time: string
+  end_time: string
+  volunteers_needed: number
+}
 
 interface EventSignupFormProps {
   eventId: string
+  slots: Slot[]
   onSuccess: () => void
 }
 
-export function EventSignupForm({ eventId, onSuccess }: EventSignupFormProps) {
+export function EventSignupForm({ eventId, slots, onSuccess }: EventSignupFormProps) {
+  const [selectedSlot, setSelectedSlot] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
@@ -25,6 +37,12 @@ export function EventSignupForm({ eventId, onSuccess }: EventSignupFormProps) {
     event.preventDefault()
     setIsLoading(true)
     setError(null)
+
+    if (!selectedSlot) {
+      setError("Please select a time slot")
+      setIsLoading(false)
+      return
+    }
 
     const formData = new FormData(event.currentTarget)
     const message = formData.get("message") as string
@@ -53,22 +71,24 @@ export function EventSignupForm({ eventId, onSuccess }: EventSignupFormProps) {
 
       setUserName(profile.full_name)
 
-      // Check if already registered
+      // Check if already registered for this slot
       const { data: existingRegistration } = await supabase
         .from("event_registrations")
         .select("id")
         .eq("event_id", eventId)
+        .eq("slot_id", selectedSlot)
         .eq("user_id", user.id)
         .single()
 
       if (existingRegistration) {
-        setError("You are already registered for this event")
+        setError("You are already registered for this time slot")
         return
       }
 
       const { error } = await supabase.from("event_registrations").insert([
         {
           event_id: eventId,
+          slot_id: selectedSlot,
           user_id: user.id,
           message: message || null,
         },
@@ -113,6 +133,33 @@ export function EventSignupForm({ eventId, onSuccess }: EventSignupFormProps) {
         </div>
       )}
 
+      <div className="space-y-2">
+        <Label>Select a Time Slot</Label>
+        <div className="grid grid-cols-1 gap-2">
+          {slots.map((slot) => (
+            <Button
+              key={slot.id}
+              type="button"
+              variant={selectedSlot === slot.id ? "default" : "outline"}
+              onClick={() => setSelectedSlot(slot.id)}
+              className="w-full justify-between"
+            >
+              <span className="flex flex-col items-start text-left">
+                <span className="text-sm font-medium">
+                  {new Date(slot.date).toLocaleDateString()}
+                </span>
+                <span className="text-xs text-gray-500">
+                  {slot.start_time} - {slot.end_time}
+                </span>
+              </span>
+              <Badge variant="secondary">
+                {slot.volunteers_needed} spots
+              </Badge>
+            </Button>
+          ))}
+        </div>
+      </div>
+
       <div>
         <Label htmlFor="message">Message to Organizer (Optional)</Label>
         <Textarea
@@ -125,7 +172,7 @@ export function EventSignupForm({ eventId, onSuccess }: EventSignupFormProps) {
       </div>
 
       <div className="flex justify-end space-x-2">
-        <Button type="submit" disabled={isLoading}>
+        <Button type="submit" disabled={isLoading || !selectedSlot}>
           {isLoading ? "Signing Up..." : "Confirm Registration"}
         </Button>
       </div>

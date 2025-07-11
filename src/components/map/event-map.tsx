@@ -10,6 +10,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Calendar, MapPin, Users, Clock } from "lucide-react"
 import { EventSignupForm } from "./event-signup-form"
 
+interface Slot {
+  id: string
+  event_id: string
+  date: string
+  start_time: string
+  end_time: string
+  volunteers_needed: number
+}
+
 interface Event {
   id: string
   title: string
@@ -22,6 +31,7 @@ interface Event {
   }
   created_at: string
   updated_at: string
+  slots: Slot[]
 }
 
 const mapContainerStyle = {
@@ -79,7 +89,15 @@ export function EventMap({ initialEvents }: EventMapProps) {
             full_name
           ),
           created_at,
-          updated_at
+          updated_at,
+          event_slots(
+            id,
+            event_id,
+            date,
+            start_time,
+            end_time,
+            volunteers_needed
+          )
         `)
 
       if (error) {
@@ -88,11 +106,11 @@ export function EventMap({ initialEvents }: EventMapProps) {
       }
 
       if (data) {
-        // Map host_id from array to object
         setEvents(
           data.map((event: any) => ({
             ...event,
             host_id: Array.isArray(event.host_id) ? event.host_id[0] : event.host_id,
+            slots: event.event_slots // Rename event_slots to slots
           }))
         )
       }
@@ -287,6 +305,7 @@ export function EventMap({ initialEvents }: EventMapProps) {
           {selectedEvent && (
             <EventSignupForm
               eventId={selectedEvent.id}
+              slots={selectedEvent.slots}
               onSuccess={() => {
                 setShowSignupForm(false)
                 setSelectedEvent(null)
