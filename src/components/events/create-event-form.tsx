@@ -14,7 +14,9 @@ import { LoadScript, Autocomplete } from "@react-google-maps/api"
 interface TimeSlot {
   date: string;
   startTime: string;
+  startPeriod: 'AM' | 'PM';
   endTime: string;
+  endPeriod: 'AM' | 'PM';
   volunteersNeeded: number;
 }
 
@@ -25,8 +27,10 @@ export function CreateEventForm({ onEventCreated }: { onEventCreated?: (event: a
   const [latLng, setLatLng] = useState<{ lat: number; lng: number } | null>(null)
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([{
     date: '',
-    startTime: '',
-    endTime: '',
+    startTime: '9:00',
+    startPeriod: 'AM',
+    endTime: '5:00',
+    endPeriod: 'PM',
     volunteersNeeded: 1
   }])
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null)
@@ -57,8 +61,10 @@ export function CreateEventForm({ onEventCreated }: { onEventCreated?: (event: a
   const addTimeSlot = () => {
     setTimeSlots([...timeSlots, {
       date: '',
-      startTime: '',
-      endTime: '',
+      startTime: '9:00',
+      startPeriod: 'AM',
+      endTime: '5:00',
+      endPeriod: 'PM',
       volunteersNeeded: 1
     }])
   }
@@ -73,6 +79,23 @@ export function CreateEventForm({ onEventCreated }: { onEventCreated?: (event: a
     setTimeSlots(newSlots)
   }
 
+  const convertTo24Hour = (time: string, period: 'AM' | 'PM'): string => {
+    const [hours, minutes] = time.split(':').map(num => parseInt(num, 10))
+    let hour = hours % 12
+    if (period === 'PM') hour += 12
+    return `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+  }
+
+  const validateTimeSlots = (slots: TimeSlot[]): boolean => {
+    return slots.every(slot => {
+      if (!slot.date || !slot.startTime || !slot.endTime) {
+        setError("All dates and times must be filled out")
+        return false
+      }
+      return true
+    })
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setIsLoading(true)
@@ -84,6 +107,11 @@ export function CreateEventForm({ onEventCreated }: { onEventCreated?: (event: a
 
     if (!address || !latLng) {
       setError("Please select a valid address from the suggestions.")
+      setIsLoading(false)
+      return
+    }
+
+    if (!validateTimeSlots(timeSlots)) {
       setIsLoading(false)
       return
     }
@@ -105,7 +133,7 @@ export function CreateEventForm({ onEventCreated }: { onEventCreated?: (event: a
           location: address,
           latitude: latLng.lat,
           longitude: latLng.lng,
-          host_id: user.id,
+          host_id: user.id
         }])
         .select()
         .single()
@@ -115,25 +143,25 @@ export function CreateEventForm({ onEventCreated }: { onEventCreated?: (event: a
         return
       }
 
+      // Prepare the time slots data
+      const slotsData = timeSlots.map(slot => ({
+        event_id: eventData.id,
+        date: slot.date,
+        start_time: convertTo24Hour(slot.startTime, slot.startPeriod),
+        end_time: convertTo24Hour(slot.endTime, slot.endPeriod),
+        volunteers_needed: slot.volunteersNeeded,
+      }))
+
       // Insert all time slots
       const { error: slotsError } = await supabase
         .from("event_slots")
-        .insert(
-          timeSlots.map(slot => ({
-            event_id: eventData.id,
-            date: slot.date,
-            start_time: slot.startTime,
-            end_time: slot.endTime,
-            volunteers_needed: slot.volunteersNeeded
-          }))
-        )
+        .insert(slotsData)
 
       if (slotsError) {
         setError(slotsError.message)
         return
       }
 
-      // Call the callback with the new event
       if (onEventCreated && eventData) {
         onEventCreated(eventData)
       }
@@ -212,21 +240,47 @@ export function CreateEventForm({ onEventCreated }: { onEventCreated?: (event: a
               </div>
               <div>
                 <Label>Start Time</Label>
-                <Input
-                  type="time"
-                  value={slot.startTime}
-                  onChange={(e) => updateTimeSlot(index, 'startTime', e.target.value)}
-                  required
-                />
+                <div className="flex gap-2">
+                  <Input
+                    type="text"
+                    pattern="^(1[0-2]|0?[1-9]):[0-5][0-9]$"
+                    placeholder="9:00"
+                    value={slot.startTime}
+                    onChange={(e) => updateTimeSlot(index, 'startTime', e.target.value)}
+                    required
+                    className="flex-1"
+                  />
+                  <select
+                    className="w-20 rounded-md border border-input bg-background px-3"
+                    value={slot.startPeriod}
+                    onChange={(e) => updateTimeSlot(index, 'startPeriod', e.target.value as 'AM' | 'PM')}
+                  >
+                    <option value="AM">AM</option>
+                    <option value="PM">PM</option>
+                  </select>
+                </div>
               </div>
               <div>
                 <Label>End Time</Label>
-                <Input
-                  type="time"
-                  value={slot.endTime}
-                  onChange={(e) => updateTimeSlot(index, 'endTime', e.target.value)}
-                  required
-                />
+                <div className="flex gap-2">
+                  <Input
+                    type="text"
+                    pattern="^(1[0-2]|0?[1-9]):[0-5][0-9]$"
+                    placeholder="5:00"
+                    value={slot.endTime}
+                    onChange={(e) => updateTimeSlot(index, 'endTime', e.target.value)}
+                    required
+                    className="flex-1"
+                  />
+                  <select
+                    className="w-20 rounded-md border border-input bg-background px-3"
+                    value={slot.endPeriod}
+                    onChange={(e) => updateTimeSlot(index, 'endPeriod', e.target.value as 'AM' | 'PM')}
+                  >
+                    <option value="AM">AM</option>
+                    <option value="PM">PM</option>
+                  </select>
+                </div>
               </div>
             </div>
           </div>
