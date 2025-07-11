@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -12,11 +11,24 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { createClient } from "@/lib/supabase/client"
 import { LoadScript, Autocomplete } from "@react-google-maps/api"
 
+interface TimeSlot {
+  date: string;
+  startTime: string;
+  endTime: string;
+  volunteersNeeded: number;
+}
+
 export function CreateEventForm({ onEventCreated }: { onEventCreated?: (event: any) => void }) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [address, setAddress] = useState("")
   const [latLng, setLatLng] = useState<{ lat: number; lng: number } | null>(null)
+  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([{
+    date: '',
+    startTime: '',
+    endTime: '',
+    volunteersNeeded: 1
+  }])
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null)
   const router = useRouter()
   const supabase = createClient()
@@ -42,20 +54,33 @@ export function CreateEventForm({ onEventCreated }: { onEventCreated?: (event: a
     }
   }
 
+  const addTimeSlot = () => {
+    setTimeSlots([...timeSlots, {
+      date: '',
+      startTime: '',
+      endTime: '',
+      volunteersNeeded: 1
+    }])
+  }
+
+  const removeTimeSlot = (index: number) => {
+    setTimeSlots(timeSlots.filter((_, i) => i !== index))
+  }
+
+  const updateTimeSlot = (index: number, field: keyof TimeSlot, value: string | number) => {
+    const newSlots = [...timeSlots]
+    newSlots[index] = { ...newSlots[index], [field]: value }
+    setTimeSlots(newSlots)
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setIsLoading(true)
     setError(null)
 
-    console.log('Form submission - Current coordinates:', latLng)
-    console.log('Form submission - Current address:', address)
-
     const formData = new FormData(event.currentTarget)
     const title = formData.get("title") as string
     const description = formData.get("description") as string
-    const date = formData.get("date") as string
-    const time = formData.get("time") as string
-    const volunteersNeeded = Number.parseInt(formData.get("volunteersNeeded") as string)
 
     if (!address || !latLng) {
       setError("Please select a valid address from the suggestions.")
@@ -64,36 +89,53 @@ export function CreateEventForm({ onEventCreated }: { onEventCreated?: (event: a
     }
 
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
+      const { data: { user } } = await supabase.auth.getUser()
 
       if (!user) {
         setError("You must be logged in to create an event")
         return
       }
 
-      const { data, error } = await supabase.from("events").insert([
-        {
+      // Insert the event first
+      const { data: eventData, error: eventError } = await supabase
+        .from("events")
+        .insert([{
           title,
           description,
-          date: `${date}T${time}`,
           location: address,
-          volunteers_needed: volunteersNeeded,
           latitude: latLng.lat,
           longitude: latLng.lng,
           host_id: user.id,
-        },
-      ]).select().single()
+        }])
+        .select()
+        .single()
 
-      if (error) {
-        setError(error.message)
+      if (eventError) {
+        setError(eventError.message)
+        return
+      }
+
+      // Insert all time slots
+      const { error: slotsError } = await supabase
+        .from("event_slots")
+        .insert(
+          timeSlots.map(slot => ({
+            event_id: eventData.id,
+            date: slot.date,
+            start_time: slot.startTime,
+            end_time: slot.endTime,
+            volunteers_needed: slot.volunteersNeeded
+          }))
+        )
+
+      if (slotsError) {
+        setError(slotsError.message)
         return
       }
 
       // Call the callback with the new event
-      if (onEventCreated && data) {
-        onEventCreated(data)
+      if (onEventCreated && eventData) {
+        onEventCreated(eventData)
       }
 
       router.push("/dashboard")
@@ -129,15 +171,66 @@ export function CreateEventForm({ onEventCreated }: { onEventCreated?: (event: a
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="date">Date</Label>
-          <Input id="date" name="date" type="date" required className="mt-1" />
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <Label>Time Slots</Label>
+          <Button type="button" variant="outline" onClick={addTimeSlot}>
+            Add Time Slot
+          </Button>
         </div>
-        <div>
-          <Label htmlFor="time">Time</Label>
-          <Input id="time" name="time" type="time" required className="mt-1" />
-        </div>
+        
+        {timeSlots.map((slot, index) => (
+          <div key={index} className="p-4 border rounded-lg space-y-4">
+            <div className="flex justify-between">
+              <h4>Slot {index + 1}</h4>
+              {timeSlots.length > 1 && (
+                <Button type="button" variant="destructive" size="sm" onClick={() => removeTimeSlot(index)}>
+                  Remove
+                </Button>
+              )}
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Date</Label>
+                <Input
+                  type="date"
+                  value={slot.date}
+                  onChange={(e) => updateTimeSlot(index, 'date', e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <Label>Volunteers Needed</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={slot.volunteersNeeded}
+                  onChange={(e) => updateTimeSlot(index, 'volunteersNeeded', parseInt(e.target.value))}
+                  required
+                />
+              </div>
+              <div>
+                <Label>Start Time</Label>
+                <Input
+                  type="time"
+                  value={slot.startTime}
+                  onChange={(e) => updateTimeSlot(index, 'startTime', e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <Label>End Time</Label>
+                <Input
+                  type="time"
+                  value={slot.endTime}
+                  onChange={(e) => updateTimeSlot(index, 'endTime', e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
 
       <div>
@@ -175,19 +268,6 @@ export function CreateEventForm({ onEventCreated }: { onEventCreated?: (event: a
             disabled
           />
         )}
-      </div>
-
-      <div>
-        <Label htmlFor="volunteersNeeded">Volunteers Needed</Label>
-        <Input
-          id="volunteersNeeded"
-          name="volunteersNeeded"
-          type="number"
-          min="1"
-          required
-          className="mt-1"
-          placeholder="10"
-        />
       </div>
 
       <Button type="submit" className="w-full" disabled={isLoading}>
