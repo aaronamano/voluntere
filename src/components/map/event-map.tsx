@@ -14,14 +14,14 @@ interface Event {
   id: string
   title: string
   description: string
-  date: string
   location: string
-  volunteers_needed: number
   latitude: number
   longitude: number
   host_id: {
     full_name: string
   }
+  created_at: string
+  updated_at: string
 }
 
 const mapContainerStyle = {
@@ -72,16 +72,15 @@ export function EventMap({ initialEvents }: EventMapProps) {
           id,
           title,
           description,
-          date,
           location,
-          volunteers_needed,
           latitude,
           longitude,
           host_id(
-            full_name)
+            full_name
+          ),
+          created_at,
+          updated_at
         `)
-        .gte('date', new Date().toISOString())
-        .order('date', { ascending: true })
 
       if (error) {
         console.error('Error fetching events:', error)
@@ -89,11 +88,11 @@ export function EventMap({ initialEvents }: EventMapProps) {
       }
 
       if (data) {
-        // Map profiles from array to single object
+        // Map host_id from array to object
         setEvents(
           data.map((event: any) => ({
             ...event,
-            profiles: Array.isArray(event.profiles) ? event.profiles[0] : event.profiles,
+            host_id: Array.isArray(event.host_id) ? event.host_id[0] : event.host_id,
           }))
         )
       }
@@ -116,7 +115,7 @@ export function EventMap({ initialEvents }: EventMapProps) {
           bounds.extend({ lat: event.latitude, lng: event.longitude })
         })
         map.fitBounds(bounds)
-        
+
         // Add minimum zoom check after fitting bounds
         const listener = map.addListener('idle', () => {
           if (map.getZoom()! > 18) map.setZoom(18)
@@ -191,20 +190,23 @@ export function EventMap({ initialEvents }: EventMapProps) {
                   pixelOffset: new google.maps.Size(0, -30),
                 }}
               >
+                {/* Update the InfoWindow content */}
                 <div className="p-2 max-w-xs">
-                  <h3 className="font-semibold text-sm mb-1">{event.title}</h3>
-                  <p className="text-xs text-gray-600 mb-2 line-clamp-2">{event.description}</p>
-                  <div className="space-y-1 mb-3">
-                    <div className="flex items-center text-xs text-gray-500">
-                      <Calendar className="h-3 w-3 mr-1" />
-                      {new Date(event.date).toLocaleDateString()}
+                  <h3 className="font-semibold text-sm mb-2">{event.title}</h3>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center text-gray-500">
+                        <MapPin className="h-3 w-3 mr-1" />
+                        {event.location}
+                      </div>
                     </div>
-                    <div className="flex items-center text-xs text-gray-500">
+                    <p className="text-xs text-gray-600 line-clamp-2">{event.description}</p>
+                    <div className="flex items-center text-xs text-gray-400 mt-1">
                       <Users className="h-3 w-3 mr-1" />
-                      {event.volunteers_needed} volunteers needed
+                      Hosted by {event.host_id?.full_name}
                     </div>
                   </div>
-                  <Button size="sm" className="w-full text-xs" onClick={() => handleViewDetails(event)}>
+                  <Button size="sm" className="w-full text-xs mt-3" onClick={() => handleViewDetails(event)}>
                     View Details
                   </Button>
                 </div>
@@ -224,22 +226,24 @@ export function EventMap({ initialEvents }: EventMapProps) {
               className="cursor-pointer hover:shadow-md transition-shadow"
               onClick={() => handleViewDetails(event)}
             >
+              {/* Update the Event List Card content */}
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm">{event.title}</CardTitle>
-                <CardDescription className="text-xs">By {event.host_id.full_name}</CardDescription>
+                <div className="flex justify-between items-start">
+                  <CardTitle className="text-sm">{event.title}</CardTitle>
+                </div>
               </CardHeader>
-              <CardContent className="pt-0">
-                <div className="flex items-center text-xs text-gray-500 mb-1">
-                  <Calendar className="h-3 w-3 mr-1" />
-                  {new Date(event.date).toLocaleDateString()}
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="flex items-center text-xs text-gray-500">
+                    <MapPin className="h-3 w-3 mr-1" />
+                    {event.location}
+                  </div>
+                  <p className="text-xs text-gray-600 line-clamp-2">{event.description}</p>
+                  <div className="flex items-center text-xs text-gray-400 pt-1">
+                    <Users className="h-3 w-3 mr-1" />
+                    Hosted by {event.host_id?.full_name}
+                  </div>
                 </div>
-                <div className="flex items-center text-xs text-gray-500 mb-2">
-                  <MapPin className="h-3 w-3 mr-1" />
-                  {event.location}
-                </div>
-                <Badge variant="outline" className="text-xs">
-                  {event.volunteers_needed} volunteers needed
-                </Badge>
               </CardContent>
             </Card>
           ))}
@@ -259,20 +263,8 @@ export function EventMap({ initialEvents }: EventMapProps) {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex items-center text-sm text-gray-500">
-                    <Calendar className="h-4 w-4 mr-2" />
-                    {new Date(selectedEvent.date).toLocaleDateString()}
-                  </div>
-                  <div className="flex items-center text-sm text-gray-500">
-                    <Clock className="h-4 w-4 mr-2" />
-                    {new Date(selectedEvent.date).toLocaleTimeString()}
-                  </div>
-                  <div className="flex items-center text-sm text-gray-500">
                     <MapPin className="h-4 w-4 mr-2" />
                     {selectedEvent.location}
-                  </div>
-                  <div className="flex items-center text-sm text-gray-500">
-                    <Users className="h-4 w-4 mr-2" />
-                    {selectedEvent.volunteers_needed} volunteers needed
                   </div>
                 </div>
 
