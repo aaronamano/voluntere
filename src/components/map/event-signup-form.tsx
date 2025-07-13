@@ -84,17 +84,26 @@ export function EventSignupForm({ eventId, slots, onSuccess }: EventSignupFormPr
         return
       }
 
-      const { error } = await supabase.from("event_registrations").insert([
-        {
-          event_id: eventId,
-          slot_id: selectedSlot,
-          user_id: user.id,
-          message: message || null,
-        },
-      ])
+      const selectedSlotData = slots.find(s => s.id === selectedSlot)!
+      if (selectedSlotData.volunteers_needed <= 0) {
+        setError("This slot is already full")
+        return
+      }
+
+      // Start a transaction for both operations
+      const { error } = await supabase.rpc('register_for_event', {
+        p_event_id: eventId,
+        p_slot_id: selectedSlot,
+        p_user_id: user.id,
+        p_message: message || null
+      })
 
       if (error) {
-        setError(error.message)
+        if (error.message.includes('no_spots_available')) {
+          setError("This slot is now full. Please choose another time slot.")
+        } else {
+          setError(error.message)
+        }
         return
       }
 
