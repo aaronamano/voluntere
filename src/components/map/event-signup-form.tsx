@@ -71,11 +71,10 @@ export function EventSignupForm({ eventId, slots, onSuccess }: EventSignupFormPr
 
       setUserName(profile.full_name)
 
-      // Check if already registered for this slot
+      // Check if already registered for this specific slot
       const { data: existingRegistration } = await supabase
         .from("event_registrations")
         .select("id")
-        .eq("event_id", eventId)
         .eq("slot_id", selectedSlot)
         .eq("user_id", user.id)
         .single()
