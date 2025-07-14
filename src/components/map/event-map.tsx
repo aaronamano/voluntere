@@ -40,8 +40,8 @@ const mapContainerStyle = {
 }
 
 const defaultCenter = {
-  lat: 42.57551758983599,
-  lng: -83.0057278990428,
+  lat: 42.58067066959867, 
+  lng: -83.00978950460713
 }
 
 const mapOptions = {

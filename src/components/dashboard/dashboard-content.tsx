@@ -210,15 +210,6 @@ export function DashboardContent({ user, hostedEvents, registrations: initialReg
                   <div className="text-2xl font-bold">{registrations.length}</div>
                 </CardContent>
               </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Impact Score</CardTitle>
-                  <Badge variant="secondary">New</Badge>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{hostedEvents.length * 10 + registrations.length * 5}</div>
-                </CardContent>
-              </Card>
             </div>
           </TabsContent>
 

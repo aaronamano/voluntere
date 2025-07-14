@@ -27,7 +27,7 @@ export default function HomePage() {
       {/* Hero Section */}
       <section className="py-20 px-4">
         <div className="container mx-auto text-center">
-          <h2 className="text-5xl font-bold text-gray-900 mb-6">Connect. Volunteer. Make a Difference.</h2>
+          <h2 className="text-5xl font-bold text-gray-900 mb-6">Volunteer Anywhere. Make a Difference. </h2>
           <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
             Discover volunteer opportunities in your community, create events, and build a network of changemakers.
           </p>
@@ -56,7 +56,7 @@ export default function HomePage() {
                 <MapPin className="h-12 w-12 text-indigo-600 mb-4" />
                 <CardTitle>Discover Events</CardTitle>
                 <CardDescription>
-                  Find volunteer opportunities on our interactive map and filter by location, cause, and date.
+                  Find volunteer opportunities using Google Maps.
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -65,7 +65,7 @@ export default function HomePage() {
                 <Calendar className="h-12 w-12 text-indigo-600 mb-4" />
                 <CardTitle>Create Events</CardTitle>
                 <CardDescription>
-                  Host your own volunteer events and manage registrations with our easy-to-use event creation tools.
+                  Host your own volunteer events with multiple time and date slots.
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -74,7 +74,7 @@ export default function HomePage() {
                 <Users className="h-12 w-12 text-indigo-600 mb-4" />
                 <CardTitle>Build Community</CardTitle>
                 <CardDescription>
-                  Connect with like-minded volunteers, track your impact, and build lasting relationships.
+                  Connect with like-minded volunteers and build lasting relationships.
                 </CardDescription>
               </CardHeader>
             </Card>
