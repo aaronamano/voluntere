@@ -37,6 +37,7 @@ export function DashboardContent({ user, hostedEvents, registrations: initialReg
   const [isLoading, setIsLoading] = useState(false)
   const [registrations, setRegistrations] = useState(initialRegistrations)
   const [isLoadingRegistrations, setIsLoadingRegistrations] = useState(false)
+  const [unregisteringId, setUnregisteringId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
@@ -115,6 +116,37 @@ export function DashboardContent({ user, hostedEvents, registrations: initialReg
     await supabase.auth.signOut()
     router.push("/")
     router.refresh()
+  }
+
+  async function handleUnregister(registrationId: string, slotId: string) {
+    setUnregisteringId(registrationId)
+    setError(null)
+
+    // Start a Supabase transaction
+    const { error: deleteError } = await supabase
+      .from('event_registrations')
+      .delete()
+      .eq('id', registrationId)
+
+    if (deleteError) {
+      setError('Failed to unregister from event')
+      console.error('Error:', deleteError)
+      setUnregisteringId(null)
+      return
+    }
+
+    // Increment volunteers_needed by 1
+    const { error: updateError } = await supabase
+      .rpc('increment_volunteers_needed', { slot_id: slotId })
+
+    if (updateError) {
+      setError('Failed to update slot capacity')
+      console.error('Error:', updateError)
+    } else {
+      setRegistrations(registrations.filter(reg => reg.id !== registrationId))
+    }
+
+    setUnregisteringId(null)
   }
 
   return (
@@ -272,7 +304,21 @@ export function DashboardContent({ user, hostedEvents, registrations: initialReg
                     </CardHeader>
                     <CardContent>
                       <p className="text-sm text-gray-600 mb-4">{registration.message}</p>
-                      <Badge variant="secondary">Registered</Badge>
+                      <div className="flex justify-between items-center">
+                        <Badge variant="secondary">Registered</Badge>
+                        <Button 
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleUnregister(registration.id, registration.event_slots.id)}
+                          disabled={unregisteringId === registration.id}
+                        >
+                          {unregisteringId === registration.id ? (
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                          ) : (
+                            'Unregister'
+                          )}
+                        </Button>
+                      </div>
                     </CardContent>
                   </Card>
                 ))}
