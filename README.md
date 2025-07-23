@@ -2,7 +2,7 @@
 1. git clone
 2. run `pnpm install` under `voluntere/`
 3. create a `.env.local` file under `voluntere/`
-4. add these variables under your `.env.local` file: `NEXT_PUBLIC_SUPABASE_URL=<url>`, `NEXT_PUBLIC_SUPABASE_ANON_KEY=<api_key>`, `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=<api_key>`
+4. add these variables in your `.env.local` file: `NEXT_PUBLIC_SUPABASE_URL=<url>`, `NEXT_PUBLIC_SUPABASE_ANON_KEY=<api_key>`, `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=<api_key>`
 
 to run the app, run `pnpm run dev` under `voluntere/`
 
