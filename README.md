@@ -15,7 +15,7 @@ Voluntere is a dynamic, multi-user platform that connects volunteers with local 
 ## How we built it 🛠️
 - <b>Next.js, Tailwind, Shadcn</b>:  Frontend tools used to build the user interface
 - <b>Supabase</b>: SQL database that collects events the user created, retrieves events to display on Google Maps, stores accounts, and manages user registrations and event slots
-- <b>Places API</b>: API from Google Maps Platform that auto suggest users a variety of existing addresses whenever the user starts typing in the search bar for a location of the event creation form
+- <b>Places API</b>: API from Google Maps Platform that auto suggests a variety of existing addresses whenever the user starts typing in the search bar of the event creation form for a location
 - <b>Maps Javascript API</b>: API from Google Maps Platform that was used via <b>@react-google-maps/api</b> package to display the map itself
 
 ## Challenges we ran into 🚧
